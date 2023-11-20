@@ -26,6 +26,6 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ## Projects Managers
 
-@antoniofreisenet1
 @emm3rsk
 @lema60879
+@antoniofreisenet1
