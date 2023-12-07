@@ -70,9 +70,28 @@ def cam_detect():
 
     # DOCS: https://docs.pixycam.com/wiki/doku.php?id=wiki:v2:porting_guide#pixy2-serial-protocol-packet-reference
     # TODO: implement getBlocks function for data transfer (see docs above)
-try:
-    while True:
 
+    # Formula for measuring the distance to an object (v1):
+    # distance(final)= distance(initial)times(x) the square root of {initial area divided by measured area}
+
+    # Formula for measuring the distance to an object (v2):
+    # distance = (AVERAGE_GREEN_OBJECT_SIZE)
+    # / (2 * green_object_size * math.tan(math.radians(39.6 / 2)))
+
+    AVERAGE_GREEN_OBJECT_SIZE = 10#size in cm
+    green_object_size = w
+    distance = AVERAGE_GREEN_OBJECT_SIZE / (2*green_object_size * math.tan(math.radians(60/2)))
+
+    return distance
+
+try:
+
+    motor_test()
+    cam_setup()
+    while True:
+        dist = cam_detect()
+        if dist < 150:
+            print("El objeto esta en el campo de vision")
         velocidad_motor = max(-100, min(100, velocidad_base))
         motor.run_direct(duty_cycle_sp=velocidad_motor)
         time.sleep(0.1)
