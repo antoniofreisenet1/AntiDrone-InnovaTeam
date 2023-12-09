@@ -1,11 +1,10 @@
 from time import *
 
 import ev3dev2._platform.ev3
-from ev3dev2.port import LegoPort
-from pixycamev3 import *
 from smbus2 import SMBus
-from ev3dev.auto import *
+from ev3dev2.auto import *
 from ev3dev2.motor import *
+from ev3dev2.sound import Sound
 from ev3dev2.sensor import *
 
 motor = MediumMotor(OUTPUT_A)
@@ -14,17 +13,16 @@ motor = MediumMotor(OUTPUT_A)
 velocidad_base = 30
 factor_correccion = 2
 
-# Signatures we'll be accepting
-sigs = 'SIG2'
+# Signatures we'll be accepting (SIGNATURE 2 FOR GREEN)
+sigs = 2
 
 # I2C bus and address
 bus = SMBus(3)
 address = 0x54
 
 def motor_test():
+
     # COMPONENT CONNECTIVITY TEST 1 - MOTOR TEST (CAMERA MOTOR)
-
-
     try:
         motor.run_direct(duty_cycle_sp=velocidad_base)
         sleep(1)
@@ -46,15 +44,15 @@ def cam_setup():
     # request firmware version (just to test)
 
     data = [174, 193, 14, 0]
-    bus.write_i2c_block_data(address, 0, data)
-    block = bus.read_i2c_block_data(address, 0, 13)
+    bus.write_i2c_block_data(0x54, 0, data)
+    block = bus.read_i2c_block_data(0x54, 0, 13)
     print("Firmware version: {}.{}\n".format(str(block[8]), str(block[9])))
 
 
 
 def cam_detect():
 
-    data = [174, 193, 32, 2, sigs, 1]  # this '1' means it will only detect the largest object
+    data = [174, 193, 32, 2, sigs, 1]
 
     # Request block
     bus.write_i2c_block_data(address, 0, data)
@@ -69,7 +67,6 @@ def cam_detect():
     h = block[15] * 256 + block[14]
 
     # DOCS: https://docs.pixycam.com/wiki/doku.php?id=wiki:v2:porting_guide#pixy2-serial-protocol-packet-reference
-    # TODO: implement getBlocks function for data transfer (see docs above)
 
     # Formula for measuring the distance to an object (v1):
     # distance(final)= distance(initial)times(x) the square root of {initial area divided by measured area}
@@ -78,7 +75,7 @@ def cam_detect():
     # distance = (AVERAGE_GREEN_OBJECT_SIZE)
     # / (2 * green_object_size * math.tan(math.radians(39.6 / 2)))
 
-    AVERAGE_GREEN_OBJECT_SIZE = 10#size in cm
+    AVERAGE_GREEN_OBJECT_SIZE = 10  # size in cm
     green_object_size = w
     distance = AVERAGE_GREEN_OBJECT_SIZE / (2*green_object_size * math.tan(math.radians(60/2)))
 
@@ -88,13 +85,16 @@ try:
 
     motor_test()
     cam_setup()
+    sound = Sound()
     while True:
         dist = cam_detect()
         if dist < 150:
-            print("El objeto esta en el campo de vision")
+            sound.speak('Detected')
+            print("Object detected at: ", dist)
         velocidad_motor = max(-100, min(100, velocidad_base))
         motor.run_direct(duty_cycle_sp=velocidad_motor)
         time.sleep(0.1)
+        motor.stop()
 
 except KeyboardInterrupt:
     print("Stop!")
