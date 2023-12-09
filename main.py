@@ -75,7 +75,7 @@ def cam_detect():
     # distance = (AVERAGE_GREEN_OBJECT_SIZE)
     # / (2 * green_object_size * math.tan(math.radians(39.6 / 2)))
 
-    AVERAGE_GREEN_OBJECT_SIZE = 10  # size in cm
+    AVERAGE_GREEN_OBJECT_SIZE = 1000  # size in pixels
     green_object_size = w
     distance = AVERAGE_GREEN_OBJECT_SIZE / (2*green_object_size * math.tan(math.radians(60/2)))
 
@@ -88,7 +88,7 @@ try:
     sound = Sound()
     while True:
         dist = cam_detect()
-        if dist < 150:
+        if 150 > dist > 1:
             sound.speak('Detected')
             print("Object detected at: ", dist)
         velocidad_motor = max(-100, min(100, velocidad_base))
