@@ -7,8 +7,8 @@ from ev3dev2.motor import *
 from ev3dev2.sound import Sound
 from ev3dev2.sensor import *
 
-motor = MediumMotor(OUTPUT_A)
 
+sound = Sound()
 
 velocidad_base = 30
 factor_correccion = 2
@@ -19,16 +19,22 @@ sigs = 2
 # I2C bus and address
 bus = SMBus(3)
 address = 0x54
+# Define motors
+horizontal_motor = MediumMotor(OUTPUT_A)  # Horizontal scan motor
+vertical_motor = LargeMotor(OUTPUT_B)    # Vertical scan motor
+
+# Define scan range (in degrees)
+horizontal_range = [-180, 180]  # Range for horizontal scanning
+vertical_range = [0, 70]     # Range for vertical scanning
 
 def motor_test():
-
-    # COMPONENT CONNECTIVITY TEST 1 - MOTOR TEST (CAMERA MOTOR)
+    # Test both motors
     try:
-        motor.run_direct(duty_cycle_sp=velocidad_base)
-        sleep(1)
-        motor.stop()
+        horizontal_motor.run_to_abs_pos(position_sp=0, speed_sp=200)
+        vertical_motor.run_to_abs_pos(position_sp=0, speed_sp=200)
+        horizontal_motor.wait_while('running')
+        vertical_motor.wait_while('running')
     except KeyboardInterrupt:
-        # TODO: SPECIFY EXCEPTION TYPES (OPTIONAL)
         print("Stopped by user")
 
 
@@ -47,8 +53,6 @@ def cam_setup():
     bus.write_i2c_block_data(0x54, 0, data)
     block = bus.read_i2c_block_data(0x54, 0, 13)
     print("Firmware version: {}.{}\n".format(str(block[8]), str(block[9])))
-
-
 
 def cam_detect():
 
@@ -81,21 +85,29 @@ def cam_detect():
 
     return distance
 
+
+def scan_and_detect():
+    # Scanning loop
+    for h_pos in range(horizontal_range[0], horizontal_range[1] + 1, 30):  # Horizontal scan
+        for v_pos in range(vertical_range[0], vertical_range[1] + 1, 10):  # Vertical scan
+            horizontal_motor.run_to_abs_pos(position_sp=h_pos, speed_sp=200)
+            vertical_motor.run_to_abs_pos(position_sp=v_pos, speed_sp=200)
+            time.sleep(0.5)
+            dist = cam_detect()
+            if 150 > dist > 1:
+                sound.speak('Destruction')
+                print("Object detected at:", dist, "Horizontal:", h_pos, "Vertical: ",v_pos)
+                return (h_pos, v_pos, dist)
 try:
 
     motor_test()
     cam_setup()
-    sound = Sound()
     while True:
-        dist = cam_detect()
-        if 150 > dist > 1:
-            sound.speak('Detected')
-            print("Object detected at: ", dist)
-        velocidad_motor = max(-100, min(100, velocidad_base))
-        motor.run_direct(duty_cycle_sp=velocidad_motor)
-        time.sleep(0.1)
-        motor.stop()
+        position = scan_and_detect()
+
 
 except KeyboardInterrupt:
     print("Stop!")
-    motor.stop()
+    sound.speak("Stopping")
+    horizontal_motor.stop()
+    vertical_motor.stop()
