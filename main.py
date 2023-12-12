@@ -24,8 +24,9 @@ horizontal_motor = MediumMotor(OUTPUT_A)  # Horizontal scan motor
 vertical_motor = LargeMotor(OUTPUT_B)    # Vertical scan motor
 
 # Define scan range (in degrees)
-horizontal_range = [-180, 180]  # Range for horizontal scanning
-vertical_range = [0, 70]     # Range for vertical scanning
+horizontal_range = [-150, 150]  # Range for horizontal scanning
+vertical_range = [-45, 45]     # Range for vertical scanning
+
 
 def motor_test():
     # Test both motors
@@ -54,6 +55,7 @@ def cam_setup():
     block = bus.read_i2c_block_data(0x54, 0, 13)
     print("Firmware version: {}.{}\n".format(str(block[8]), str(block[9])))
 
+
 def cam_detect():
 
     data = [174, 193, 32, 2, sigs, 1]
@@ -78,6 +80,7 @@ def cam_detect():
     # Formula for measuring the distance to an object (v2):
     # distance = (AVERAGE_GREEN_OBJECT_SIZE)
     # / (2 * green_object_size * math.tan(math.radians(39.6 / 2)))
+    # TODO: Remake the formula to better reflect the distance to an object.
 
     AVERAGE_GREEN_OBJECT_SIZE = 1000  # size in pixels
     green_object_size = w
@@ -88,16 +91,20 @@ def cam_detect():
 
 def scan_and_detect():
     # Scanning loop
-    for h_pos in range(horizontal_range[0], horizontal_range[1] + 1, 30):  # Horizontal scan
-        for v_pos in range(vertical_range[0], vertical_range[1] + 1, 10):  # Vertical scan
-            horizontal_motor.run_to_abs_pos(position_sp=h_pos, speed_sp=200)
-            vertical_motor.run_to_abs_pos(position_sp=v_pos, speed_sp=200)
-            time.sleep(0.5)
+    h_pos = horizontal_range[0]
+    for v_pos in range(vertical_range[0], vertical_range[1] + 1, 10):  # Vertical scan
+        vertical_motor.run_to_abs_pos(position_sp=v_pos, speed_sp=200)
+        while h_pos <= horizontal_range[1]:  # Horizontal scan
             dist = cam_detect()
             if 150 > dist > 1:
                 sound.speak('Destruction')
                 print("Object detected at:", dist, "Horizontal:", h_pos, "Vertical: ",v_pos)
-                return (h_pos, v_pos, dist)
+                return h_pos, v_pos, dist
+            h_pos += 30
+            horizontal_motor.run_to_abs_pos(position_sp=h_pos, speed_sp=200)
+            time.sleep(0.5)
+
+
 try:
 
     motor_test()
