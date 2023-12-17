@@ -1,4 +1,6 @@
 from time import *
+from queue import Queue
+import threading
 
 import ev3dev2._platform.ev3
 from smbus2 import SMBus
@@ -13,6 +15,9 @@ sound = Sound()
 velocidad_base = 30
 factor_correccion = 2
 
+# Queue definition
+com_queue = Queue()
+
 # Signatures we'll be accepting (SIGNATURE 2 FOR GREEN)
 sigs = 2
 
@@ -22,10 +27,12 @@ address = 0x54
 # Define motors
 horizontal_motor = MediumMotor(OUTPUT_A)  # Horizontal scan motor
 vertical_motor = LargeMotor(OUTPUT_B)    # Vertical scan motor
+shooter_motor = LargeMotor(OUTPUT_C)
 
 # Define scan range (in degrees)
-horizontal_range = [-150, 150]  # Range for horizontal scanning
-vertical_range = [-45, 45]     # Range for vertical scanning
+horizontal_range = [0, 360]  # Range for horizontal scanning
+vertical_range = [-90, 0]     # Range for vertical scanning
+
 
 
 def motor_test():
@@ -94,23 +101,68 @@ def scan_and_detect():
     h_pos = horizontal_range[0]
     for v_pos in range(vertical_range[0], vertical_range[1] + 1, 10):  # Vertical scan
         vertical_motor.run_to_abs_pos(position_sp=v_pos, speed_sp=200)
-        while h_pos <= horizontal_range[1]:  # Horizontal scan
+        while h_pos < horizontal_range[1]:  # Horizontal scan
             dist = cam_detect()
             if 150 > dist > 1:
                 sound.speak('Destruction')
                 print("Object detected at:", dist, "Horizontal:", h_pos, "Vertical: ",v_pos)
-                return h_pos, v_pos, dist
+                com_queue.put((h_pos, v_pos, dist))
+
+                # this will make sure that, if there is an object found, the camera will stop the loop
+                # and center on the object.
+                calibrateAll()
+
             h_pos += 30
             horizontal_motor.run_to_abs_pos(position_sp=h_pos, speed_sp=200)
             time.sleep(0.5)
 
+
+def shooter():
+    # TODO: implement calibrate shooter function
+
+    # When performing a queue.get operation, the thread will be blocked if there are no objects in the queue
+    object_pos = com_queue.get()
+    if object_pos <3:
+    pass
+
+def calibrateAll():
+    # Pixy2 has a resolution of 328 * 200
+    # make sure that the function will properly move the camera/shooter
+    x = 328/2
+    y = 200/2
+    if x != com_queue.get()[0]:
+        horizontal_motor.run_to_abs_pos(position_sp = x, speed_sp = 200)
+    if y != com_queue.get()[1]:
+        vertical_motor.run_to_abs_pos(position_sp = y, speed_sp = 200)
+
+    if(150 > com_queue.get()[2] > 50):
+        shooter_motor.run_to_abs_pos(position_sp = y + 22)
+    elif(150 > com_queue.get()[2] > 100):
+        shooter_motor.run_to_abs_pos(position_sp=y + 45)
+
+
+# Creating threads:
+cam_thread_started = False
+shooter_thread_started = False
+
+
+def start_threads():
+    global cam_thread_started
+    global shooter_thread_started
+    if not cam_thread_started:
+        cam_thread_started= True
+        threading.Thread(target=scan_and_detect).start()
+        print("The cam detection thread has started")
+    if not shooter_thread_started:
+        threading.Thread(target=calibrate_shooter).start()
+        print("The shooter thread has started")
 
 try:
 
     motor_test()
     cam_setup()
     while True:
-        position = scan_and_detect()
+        start_threads()
 
 
 except KeyboardInterrupt:
