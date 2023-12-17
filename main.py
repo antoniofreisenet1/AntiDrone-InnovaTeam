@@ -118,12 +118,17 @@ def scan_and_detect():
 
 
 def shooter():
-    # TODO: implement calibrate shooter function
-
     # When performing a queue.get operation, the thread will be blocked if there are no objects in the queue
-    object_pos = com_queue.get()
-    if object_pos <3:
-        pass
+
+    y = 200/2
+    if(150 > com_queue.get()[2] > 50):
+        shooter_motor.run_to_abs_pos(position_sp = y + 22)
+    elif(150 > com_queue.get()[2] > 100):
+        shooter_motor.run_to_abs_pos(position_sp=y + 45)
+
+    # TODO: implement shooter activation function
+
+
 
 def calibrateAll():
     # Pixy2 has a resolution of 328 * 200
@@ -134,11 +139,6 @@ def calibrateAll():
         horizontal_motor.run_to_abs_pos(position_sp = x, speed_sp = 200)
     if y != com_queue.get()[1]:
         vertical_motor.run_to_abs_pos(position_sp = y, speed_sp = 200)
-
-    if(150 > com_queue.get()[2] > 50):
-        shooter_motor.run_to_abs_pos(position_sp = y + 22)
-    elif(150 > com_queue.get()[2] > 100):
-        shooter_motor.run_to_abs_pos(position_sp=y + 45)
 
 
 # Creating threads:
@@ -154,7 +154,7 @@ def start_threads():
         threading.Thread(target=scan_and_detect).start()
         print("The cam detection thread has started")
     if not shooter_thread_started:
-        threading.Thread(target=calibrate_shooter).start()
+        threading.Thread(target=shooter).start()
         print("The shooter thread has started")
 
 try:
