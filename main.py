@@ -123,7 +123,7 @@ def shooter():
     # When performing a queue.get operation, the thread will be blocked if there are no objects in the queue
     object_pos = com_queue.get()
     if object_pos <3:
-    pass
+        pass
 
 def calibrateAll():
     # Pixy2 has a resolution of 328 * 200
