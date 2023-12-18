@@ -38,8 +38,8 @@ vertical_range = [-90, 0]     # Range for vertical scanning
 def motor_test():
     # Test both motors
     try:
-        horizontal_motor.run_to_abs_pos(position_sp=0, speed_sp=200)
-        vertical_motor.run_to_abs_pos(position_sp=0, speed_sp=200)
+        horizontal_motor.run_to_abs_pos(position_sp=0, speed_sp=100)
+        vertical_motor.run_to_abs_pos(position_sp=0, speed_sp=100)
         horizontal_motor.wait_while('running')
         vertical_motor.wait_while('running')
     except KeyboardInterrupt:
@@ -105,12 +105,12 @@ def scan_and_detect():
             dist = cam_detect()
             if 150 > dist > 1:
                 sound.speak('Destruction')
-                print("Object detected at:", dist, "Horizontal:", h_pos, "Vertical: ",v_pos)
+                print("Object detected at:", dist, "Horizontal:", h_pos, "Vertical: ", v_pos)
                 com_queue.put((h_pos, v_pos, dist))
 
                 # this will make sure that, if there is an object found, the camera will stop the loop
                 # and center on the object.
-                calibrateAll()
+                #calibrateAll()
 
             h_pos += 30
             horizontal_motor.run_to_abs_pos(position_sp=h_pos, speed_sp=200)
@@ -126,6 +126,7 @@ def shooter():
     elif(150 > com_queue.get()[2] > 100):
         shooter_motor.run_to_abs_pos(position_sp=y + 45)
 
+
     # TODO: implement shooter activation function
 
 
@@ -135,10 +136,15 @@ def calibrateAll():
     # make sure that the function will properly move the camera/shooter
     x = 328/2
     y = 200/2
-    if x != com_queue.get()[0]:
-        horizontal_motor.run_to_abs_pos(position_sp = x, speed_sp = 200)
-    if y != com_queue.get()[1]:
-        vertical_motor.run_to_abs_pos(position_sp = y, speed_sp = 200)
+    while x < com_queue.get()[0]:
+        horizontal_motor.run_direct(duty_cycle_sp = 20)
+    while x >= com_queue.get()[0]:
+        horizontal_motor.run_direct(duty_cycle_sp = -20)
+
+    while y <= com_queue.get()[1]:
+        vertical_motor.run_direct(duty_cycle_sp = 20)
+    while y > com_queue.get()[1]:
+        vertical_motor.run_direct(duty_cycle_sp = -20)
 
 
 # Creating threads:
@@ -154,8 +160,9 @@ def start_threads():
         threading.Thread(target=scan_and_detect).start()
         print("The cam detection thread has started")
     if not shooter_thread_started:
-        threading.Thread(target=shooter).start()
+        #threading.Thread(target=shooter).start()
         print("The shooter thread has started")
+        shooter_thread_started = True
 
 try:
 
