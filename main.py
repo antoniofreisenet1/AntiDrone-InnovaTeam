@@ -35,17 +35,6 @@ vertical_range = [-90, 0]     # Range for vertical scanning
 
 
 
-def motor_test():
-    # Test both motors
-    try:
-        horizontal_motor.run_to_abs_pos(position_sp=0, speed_sp=200)
-        vertical_motor.run_to_abs_pos(position_sp=0, speed_sp=200)
-        horizontal_motor.wait_while('running')
-        vertical_motor.wait_while('running')
-    except KeyboardInterrupt:
-        print("Stopped by user")
-
-
 def cam_setup():
     # COMPONENT CONNECTIVITY TEST 2 - CAMERA TEST
     # set LEGO port for Pixy on Input 1
