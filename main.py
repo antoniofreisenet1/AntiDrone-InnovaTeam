@@ -1,12 +1,13 @@
 import math
 from time import sleep, time
-
-from ev3dev2.motor import MediumMotor
+from decimal import Decimal, getcontext
+from ev3dev2.motor import MediumMotor, LargeMotor
 from ev3dev2.sound import Sound
 from smbus2 import SMBus
 from ev3dev2.sensor import LegoPort
 
 motor = MediumMotor("outA")
+motor2 = LargeMotor("outB")
 
 velocidad_base = 30
 factor_correccion = 2
@@ -21,8 +22,10 @@ address = 0x54
 def motor_test():
     try:
         motor.run_direct(duty_cycle_sp=velocidad_base)
+        motor2.run_direct(duty_cycle_sp=velocidad_base)  # Adjust speed as needed
         sleep(1)
         motor.stop()
+        motor2.stop()
     except KeyboardInterrupt:
         print("Stopped by user")
 
@@ -59,7 +62,23 @@ def calibrateAll():
 
     # Move the motors to the new target position
     motor.run_to_abs_pos(position_sp=int(new_target_x), speed_sp=speed_sp)
-    motor.run_to_abs_pos(position_sp=int(new_target_y), speed_sp=speed_sp)
+    motor2.run_to_abs_pos(position_sp=int(new_target_y), speed_sp=speed_sp)
+
+def calculate_distance(L, w, x, alpha):
+    # Convert inputs to Decimal
+    L = Decimal(L)
+    w = Decimal(w)
+    x = Decimal(x)
+    alpha = Decimal(alpha)
+
+    # Define constants with higher precision
+    C1 = L / (2 * Decimal(math.tan(alpha / 2)))
+    C2 = w / 2
+
+    # Calculate distance with higher precision
+    D = C1 * (x / C2)
+
+    return float(D)  # Convert back to float if needed for compatibility
 
 def cam_setup():
     # COMPONENT CONNECTIVITY TEST 2 - CAMERA TEST
@@ -115,9 +134,12 @@ try:
             print("Object detected at: ", dist)
         velocidad_motor = max(-100, min(100, velocidad_base))
         motor.run_direct(duty_cycle_sp=velocidad_motor)
+        motor2.run_direct(duty_cycle_sp=velocidad_motor)  # Adjust speed as needed
         sleep(0.1)
         motor.stop()
+        motor2.stop()
 
 except KeyboardInterrupt:
     print("Stop!")
     motor.stop()
+    motor2.stop()
