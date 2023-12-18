@@ -1,22 +1,15 @@
-from time import *
-from queue import Queue
-import threading
+import math
+from time import sleep, time
 
-import ev3dev2._platform.ev3
-from smbus2 import SMBus
-from ev3dev2.auto import *
-from ev3dev2.motor import *
+from ev3dev2.motor import MediumMotor
 from ev3dev2.sound import Sound
-from ev3dev2.sensor import *
+from smbus2 import SMBus
+from ev3dev2.sensor import LegoPort
 
-
-sound = Sound()
+motor = MediumMotor("outA")
 
 velocidad_base = 30
 factor_correccion = 2
-
-# Queue definition
-com_queue = Queue()
 
 # Signatures we'll be accepting (SIGNATURE 2 FOR GREEN)
 sigs = 2
@@ -24,27 +17,49 @@ sigs = 2
 # I2C bus and address
 bus = SMBus(3)
 address = 0x54
-# Define motors
-horizontal_motor = MediumMotor(OUTPUT_A)  # Horizontal scan motor
-vertical_motor = LargeMotor(OUTPUT_B)    # Vertical scan motor
-shooter_motor = LargeMotor(OUTPUT_C)
-
-# Define scan range (in degrees)
-horizontal_range = [0, 360]  # Range for horizontal scanning
-vertical_range = [-90, 0]     # Range for vertical scanning
-
-
 
 def motor_test():
-    # Test both motors
     try:
-        horizontal_motor.run_to_abs_pos(position_sp=0, speed_sp=200)
-        vertical_motor.run_to_abs_pos(position_sp=0, speed_sp=200)
-        horizontal_motor.wait_while('running')
-        vertical_motor.wait_while('running')
+        motor.run_direct(duty_cycle_sp=velocidad_base)
+        sleep(1)
+        motor.stop()
     except KeyboardInterrupt:
         print("Stopped by user")
 
+def calibrateAll():
+    # Pixy2 has a resolution of 328 * 200
+    # Make sure that the function will properly move the camera/shooter
+    target_x = 328 / 2
+    target_y = 200 / 2
+
+    current_x, current_y = com_queue.get()
+
+    # Calculate the difference between the current position and the target position
+    dx = target_x - current_x
+    dy = target_y - current_y
+
+    # Calculate the angle (in radians) between the current position vector and the target position vector
+    angle = math.atan2(dy, dx)
+
+    # Convert the angle to degrees and add 60 degrees to create a vector at a 60-degree angle
+    angle_degrees = math.degrees(angle) + 60
+
+    # Calculate the length of the vector based on the speed_sp
+    speed_sp = 200
+    vector_length = math.sqrt(dx**2 + dy**2)
+
+    # Calculate proportional control adjustments
+    kp = 0.1  # Adjust this value based on experimentation
+    proportional_adjustment_x = kp * dx
+    proportional_adjustment_y = kp * dy
+
+    # Calculate the new target position using the vector at a 60-degree angle and proportional adjustments
+    new_target_x = current_x + vector_length * math.cos(math.radians(angle_degrees)) + proportional_adjustment_x
+    new_target_y = current_y + vector_length * math.sin(math.radians(angle_degrees)) + proportional_adjustment_y
+
+    # Move the motors to the new target position
+    motor.run_to_abs_pos(position_sp=int(new_target_x), speed_sp=speed_sp)
+    motor.run_to_abs_pos(position_sp=int(new_target_y), speed_sp=speed_sp)
 
 def cam_setup():
     # COMPONENT CONNECTIVITY TEST 2 - CAMERA TEST
@@ -56,15 +71,12 @@ def cam_setup():
     sleep(2)
 
     # request firmware version (just to test)
-
     data = [174, 193, 14, 0]
     bus.write_i2c_block_data(0x54, 0, data)
     block = bus.read_i2c_block_data(0x54, 0, 13)
     print("Firmware version: {}.{}\n".format(str(block[8]), str(block[9])))
 
-
 def cam_detect():
-
     data = [174, 193, 32, 2, sigs, 1]
 
     # Request block
@@ -79,94 +91,33 @@ def cam_detect():
     w = block[13] * 256 + block[12]
     h = block[15] * 256 + block[14]
 
-    # DOCS: https://docs.pixycam.com/wiki/doku.php?id=wiki:v2:porting_guide#pixy2-serial-protocol-packet-reference
-
-    # Formula for measuring the distance to an object (v1):
-    # distance(final)= distance(initial)times(x) the square root of {initial area divided by measured area}
-
     # Formula for measuring the distance to an object (v2):
     # distance = (AVERAGE_GREEN_OBJECT_SIZE)
-    # / (2 * green_object_size * math.tan(math.radians(39.6 / 2)))
-    # TODO: Remake the formula to better reflect the distance to an object.
+    # / (2 * green_object_size * math.tan(math.radians(60 / 2)))
 
     AVERAGE_GREEN_OBJECT_SIZE = 1000  # size in pixels
     green_object_size = w
-    distance = AVERAGE_GREEN_OBJECT_SIZE / (2*green_object_size * math.tan(math.radians(60/2)))
+    distance = AVERAGE_GREEN_OBJECT_SIZE / (2 * green_object_size * math.tan(math.radians(60 / 2)))
+
+    # Calibrate the motors to center the target in the camera
+    calibrateAll()
 
     return distance
 
-
-def scan_and_detect():
-    # Scanning loop
-    h_pos = horizontal_range[0]
-    for v_pos in range(vertical_range[0], vertical_range[1] + 1, 10):  # Vertical scan
-        vertical_motor.run_to_abs_pos(position_sp=v_pos, speed_sp=200)
-        while h_pos < horizontal_range[1]:  # Horizontal scan
-            dist = cam_detect()
-            if 150 > dist > 1:
-                sound.speak('Destruction')
-                print("Object detected at:", dist, "Horizontal:", h_pos, "Vertical: ",v_pos)
-                com_queue.put((h_pos, v_pos, dist))
-
-                # this will make sure that, if there is an object found, the camera will stop the loop
-                # and center on the object.
-                calibrateAll()
-
-            h_pos += 30
-            horizontal_motor.run_to_abs_pos(position_sp=h_pos, speed_sp=200)
-            time.sleep(0.5)
-
-
-def shooter():
-    # When performing a queue.get operation, the thread will be blocked if there are no objects in the queue
-
-    y = 200/2
-    if(150 > com_queue.get()[2] > 50):
-        shooter_motor.run_to_abs_pos(position_sp = y + 22)
-    elif(150 > com_queue.get()[2] > 100):
-        shooter_motor.run_to_abs_pos(position_sp=y + 45)
-
-    # TODO: implement shooter activation function
-
-
-
-def calibrateAll():
-    # Pixy2 has a resolution of 328 * 200
-    # make sure that the function will properly move the camera/shooter
-    x = 328/2
-    y = 200/2
-    if x != com_queue.get()[0]:
-        horizontal_motor.run_to_abs_pos(position_sp = x, speed_sp = 200)
-    if y != com_queue.get()[1]:
-        vertical_motor.run_to_abs_pos(position_sp = y, speed_sp = 200)
-
-
-# Creating threads:
-cam_thread_started = False
-shooter_thread_started = False
-
-
-def start_threads():
-    global cam_thread_started
-    global shooter_thread_started
-    if not cam_thread_started:
-        cam_thread_started= True
-        threading.Thread(target=scan_and_detect).start()
-        print("The cam detection thread has started")
-    if not shooter_thread_started:
-        threading.Thread(target=shooter).start()
-        print("The shooter thread has started")
-
 try:
-
     motor_test()
     cam_setup()
+    sound = Sound()
     while True:
-        start_threads()
-
+        dist = cam_detect()
+        if 150 > dist > 1:
+            sound.speak('Detected')
+            print("Object detected at: ", dist)
+        velocidad_motor = max(-100, min(100, velocidad_base))
+        motor.run_direct(duty_cycle_sp=velocidad_motor)
+        sleep(0.1)
+        motor.stop()
 
 except KeyboardInterrupt:
     print("Stop!")
-    sound.speak("Stopping")
-    horizontal_motor.stop()
-    vertical_motor.stop()
+    motor.stop()
