@@ -51,6 +51,7 @@ class MotorController:
 
 class Camera:
     def __init__(self, port, address=0x54, sigs=2):
+        self.resolution = [1296, 976]
         self.port = LegoPort(port)
         self.port.mode = "other-i2c"
         self.bus = SMBus(3)
@@ -69,6 +70,7 @@ class Camera:
         """
         obj_width = OBJ_WIDTH
         obj_height = OBJ_HEIGHT
+        cm_conversion = 100
         # Request block
         self.bus.write_i2c_block_data(self.address, 0, self.request_data)
 
@@ -86,7 +88,7 @@ class Camera:
             pixel_size = (w + h) / 2
             distance = (obj_width + obj_height) / (2 * pixel_size * math.tan(math.radians(camera_fov / 2)))
             print("Detection : X{}, Y{}, D{}".format(x, y, distance))
-            return x, y, distance
+            return x, y, distance*cm_conversion
         else:
             return None, None, None
 
@@ -136,6 +138,50 @@ def scan_with_camera(h_motor, v_motor, touch_sensor, sound, camera):
         h_motor.run_for_degrees(h_deg_increment)  # Increment horizontal motor
 
 
+class PIDController:
+    def __init__(self, kp, ki, kd):
+        self.kp = kp
+        self.ki = ki
+        self.kd = kd
+        self.integral = 0
+        self.last_error = 0
+
+    def calculate(self, error):
+        self.integral += error
+        derivative = error - self.last_error
+        output = self.kp * error + self.ki * self.integral + self.kd * derivative
+        self.last_error = error
+        return output
+
+
+def track_object_pid(h_motor, v_motor, camera, pid_h, pid_v, touch_sensor, sound):
+    # Camera specs
+    center_x, center_y = 1296 / 2, 976 / 2
+    fov_x, fov_y = 60, 40  # degrees
+    degrees_per_pixel_x = fov_x / 1296
+    degrees_per_pixel_y = fov_y / 976
+
+    while not touch_sensor.is_pressed:
+        x, y, _ = camera.detect_object()
+        if x is not None and y is not None:
+            # Calculate error in degrees
+            error_x = (center_x - x) * degrees_per_pixel_x
+            error_y = (center_y - y) * degrees_per_pixel_y
+
+            h_adjustment = pid_h.calculate(error_x)
+            v_adjustment = pid_v.calculate(error_y)
+
+            # Apply adjustments with motor range check
+            h_motor.run_for_degrees(max(min(h_adjustment, h_motor.motor_range[1]), h_motor.motor_range[0]))
+            v_motor.run_for_degrees(max(min(v_adjustment, v_motor.motor_range[1]), v_motor.motor_range[0]))
+
+        time.sleep(0.1)
+
+    sound.speak('Tracking stopped')
+
+# PID coefficients and other initialization code remains the same
+
+
 if __name__ == "__main__":
     sound = Sound()
     # Initialization
@@ -151,6 +197,13 @@ if __name__ == "__main__":
     shoot_motor.reset()
 
     touch_sensor = TouchSensor(TOUCH_SENSOR_PORT)
+
+    # Initialize PID Controllers
+    pid_h = PIDController(kp=0.1, ki=0.01, kd=0.01)
+    pid_v = PIDController(kp=0.1, ki=0.01, kd=0.01)
+
+    # Start tracking
+
     # update_pos = input("Update positions ? Y/N")
     update_pos = "N"
     if update_pos == "Y":
@@ -171,7 +224,8 @@ if __name__ == "__main__":
     # Main loop
     try:
         sound.speak("Starting scan")
-        scan_with_camera(h_motor, v_camera_motor, touch_sensor, sound, camera)
+        # scan_with_camera(h_motor, v_camera_motor, touch_sensor, sound, camera)
+        track_object_pid(h_motor, v_camera_motor, camera, pid_h, pid_v, touch_sensor, sound)
         # for h_deg in range(0, 180, 10):
         # h_motor.run_for_degrees(h_deg)
         # print(h_deg, h_motor.motor_range[1])
