@@ -1,7 +1,8 @@
+import sched
+import string
 from time import *
 from queue import Queue
-import threading
-
+from threading import Thread
 import ev3dev2._platform.ev3
 from smbus2 import SMBus
 from ev3dev2.auto import *
@@ -25,23 +26,25 @@ sigs = 2
 bus = SMBus(3)
 address = 0x54
 # Define motors
-horizontal_motor = MediumMotor(OUTPUT_A)  # Horizontal scan motor
+horizontal_motor = LargeMotor(OUTPUT_A)  # Horizontal scan motor
 vertical_motor = LargeMotor(OUTPUT_B)    # Vertical scan motor
-shooter_motor = LargeMotor(OUTPUT_C)
+shooter_Vmotor = LargeMotor(OUTPUT_C)   #Shooter aim motor
+shooter_trigger = LargeMotor(OUTPUT_D) #Shooter trigger motor
 
 # Define scan range (in degrees)
 horizontal_range = [0, 360]  # Range for horizontal scanning
-vertical_range = [-90, 0]     # Range for vertical scanning
+vertical_range = [45, 90]     # Range for vertical scanning
 
+# Scheduler declaration: for multithreading functions
 
+scheduler = sched.scheduler()
 
 def motor_test():
     # Test both motors
     try:
         horizontal_motor.run_to_abs_pos(position_sp=0, speed_sp=100)
         vertical_motor.run_to_abs_pos(position_sp=0, speed_sp=100)
-        horizontal_motor.wait_while('running')
-        vertical_motor.wait_while('running')
+
     except KeyboardInterrupt:
         print("Stopped by user")
 
@@ -93,83 +96,121 @@ def cam_detect():
     green_object_size = w
     distance = AVERAGE_GREEN_OBJECT_SIZE / (2*green_object_size * math.tan(math.radians(60/2)))
 
-    return distance
+    return [distance, x, y]
 
 
 def scan_and_detect():
-    # Scanning loop
-    h_pos = horizontal_range[0]
     for v_pos in range(vertical_range[0], vertical_range[1] + 1, 10):  # Vertical scan
-        vertical_motor.run_to_abs_pos(position_sp=v_pos, speed_sp=200)
-        while h_pos < horizontal_range[1]:  # Horizontal scan
+        for h_pos in range(horizontal_range[0], horizontal_range[1] + 1, 30):  # Horizontal scan
             dist = cam_detect()
-            if 150 > dist > 1:
-                sound.speak('Destruction')
-                print("Object detected at:", dist, "Horizontal:", h_pos, "Vertical: ", v_pos)
-                com_queue.put((h_pos, v_pos, dist))
-
-                # this will make sure that, if there is an object found, the camera will stop the loop
-                # and center on the object.
-                #calibrateAll()
-
-            h_pos += 30
-            horizontal_motor.run_to_abs_pos(position_sp=h_pos, speed_sp=200)
-            time.sleep(0.5)
+            if is_valid_distance(dist[0]):
+                handle_detection(dist)
+            horizontal_motor.run_to_abs_pos(position_sp = h_pos, speed_sp = 50)
+        vertical_motor.run_to_abs_pos(position_sp=v_pos, speed_sp=200)
 
 
-def shooter():
+def is_valid_distance(distance):
+    return 150 > distance > 1
+
+
+def handle_detection(distance):
+    sound.speak('Destruction')
+    print("Object detected at:", distance[0], "Horizontal: ", distance[1], "Vertical: ",distance[1])
+    #com_queue.put((horizontal, vertical, distance))
+    calibrateAll(distance[1], distance[2])
+    shooter(distance[0])
+
+
+def calculate_inclination_angle(distance):
+    initial_velocity = 23  # Constant speed
+    return math.degrees(0.5 * math.asin((distance * 9.81) / (initial_velocity ** 2)))
+
+
+def shooter(dist):
     # When performing a queue.get operation, the thread will be blocked if there are no objects in the queue
 
     y = 200/2
-    if(150 > com_queue.get()[2] > 50):
-        shooter_motor.run_to_abs_pos(position_sp = y + 22)
-    elif(150 > com_queue.get()[2] > 100):
-        shooter_motor.run_to_abs_pos(position_sp=y + 45)
-
+    pos = calculate_inclination_angle(dist)
+    # For the code to work, we need to be constantly sending data to the queue (multithread only)
+    shooter_Vmotor.run_to_abs_pos(position_sp = pos)
+    shooter_trigger.run_timed(time_sp = 1, speed_sp = 200)
 
     # TODO: implement shooter activation function
 
 
 
-def calibrateAll():
+def calibrateAll(hpos, vpos):
     # Pixy2 has a resolution of 328 * 200
     # make sure that the function will properly move the camera/shooter
     x = 328/2
     y = 200/2
-    while x < com_queue.get()[0]:
+    while x < hpos:
         horizontal_motor.run_direct(duty_cycle_sp = 20)
-    while x >= com_queue.get()[0]:
+        sleep(0.1)
+    while x >= hpos:
         horizontal_motor.run_direct(duty_cycle_sp = -20)
-
-    while y <= com_queue.get()[1]:
+        sleep(0.1)
+    while y <= vpos:
         vertical_motor.run_direct(duty_cycle_sp = 20)
-    while y > com_queue.get()[1]:
+        sleep(0.1)
+    while y > vpos:
         vertical_motor.run_direct(duty_cycle_sp = -20)
+        sleep(0.1)
+
+
+# Input detection function:
+
+
+def manual_overtake():
+    """
+    This function detects a command given by the user. If the command is correct, the robot will cease automatic mode
+    and switch to manual mode, performing the command given. Once the command has been executed, or once the user types
+    the command "RETURN", the robot will return to automatic mode.
+    :param:
+    :return:
+    """
+    command = input()
+    aux = command.split(" ")
+    print(aux)
+    if(command == 'SHOOT'):
+        shooter_trigger.run_timed(time_sp = 1, stop_action = 'coast')
+    elif(command == 'SHUTDOWN'):
+        print("Stop!")
+        sound.speak("Stopping")
+        horizontal_motor.stop()
+        vertical_motor.stop()
+        shooter_trigger.stop()
+        shooter_Vmotor.stop()
+        exit()
+    elif(command == 'SPEAK'):
+        if(cam.is_alive()):
+            sound.speak("DETECTING")
+        else:
+            sound.speak("IDLING")
+    elif(aux[0] == 'TURN'):
+        if(aux[1] == 'RIGHT'):
+            horizontal_motor.run_to_rel_pos(position_sp = aux[2])
+        elif(aux[1] == 'LEFT'):
+            horizontal_motor.run_to_rel_pos(position_sp = -aux[2])
+    elif(command == 'CANCEL'):
+        exit()
 
 
 # Creating threads:
-cam_thread_started = False
-shooter_thread_started = False
-
-
-def start_threads():
-    global cam_thread_started
-    global shooter_thread_started
-    if not cam_thread_started:
-        cam_thread_started= True
-        threading.Thread(target=scan_and_detect).start()
-        print("The cam detection thread has started")
-    if not shooter_thread_started:
-        #threading.Thread(target=shooter).start()
-        print("The shooter thread has started")
-        shooter_thread_started = True
+t = Thread(target = manual_overtake, name = "Thread_Input_Detect", daemon= True)
+cam = Thread(target = scan_and_detect, name = "Thread_Cam")
 
 try:
 
     motor_test()
     cam_setup()
+    t.start()
+    cam.start()
+
+    #event1 = scheduler.enter(1, 1, manual_overtake)
     while True:
-        start_threads()
+        scan_and_detect()
+
 
 
 except KeyboardInterrupt:
