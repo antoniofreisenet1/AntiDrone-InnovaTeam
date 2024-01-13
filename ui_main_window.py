@@ -104,18 +104,51 @@ class Ui_MainWindow(object):
         MainWindow.setWindowTitle(_translate("MainWindow", "MainWindow"))
         self.name.setText(_translate("MainWindow", "TextLabel"))
         self.IP.setText(_translate("MainWindow", "TextLabel"))
-        self.pushButton_4.setText(_translate("MainWindow", "PushButton"))
-        self.pushButton_5.setText(_translate("MainWindow", "PushButton"))
-        self.pushButton_7.setText(_translate("MainWindow", "PushButton"))
-        self.pushButton_6.setText(_translate("MainWindow", "PushButton"))
-        self.pushButton_8.setText(_translate("MainWindow", "PushButton"))
-        self.pushButton_3.setText(_translate("MainWindow", "PushButton"))
-        self.pushButton_2.setText(_translate("MainWindow", "PushButton"))
-        self.pushButton.setText(_translate("MainWindow", "PushButton"))
+        self.pushButton_4.clicked.connect(self.run_full_turn)
+        self.pushButton_5.clicked.connect(self.shoot)
+        self.pushButton_7.clicked.connect(self.spiral_scan)
+        self.pushButton_6.clicked.connect(self.classic_scan)
+        self.pushButton_8.clicked.connect(self.reset_position)
+        self.pushButton_3.clicked.connect(self.some_new_function)
+        self.pushButton_2.clicked.connect(self.another_new_function)
+        self.pushButton.clicked.connect(self.yet_another_new_function)
         self.actionConnect.setText(_translate("MainWindow", "Connect"))
         self.actionRefresh.setText(_translate("MainWindow", "Refresh"))
         self.actionClassicScan.setText(_translate("MainWindow", "ClassicScan"))
         self.actionSpiralScan.setText(_translate("MainWindow", "SpiralScan"))
         self.actionShoot.setText(_translate("MainWindow", "Shoot"))
         self.actionReset_Position.setText(_translate("MainWindow", "Reset Position"))
+
+    def run_full_turn(self):
+        # Code à exécuter lorsque le bouton "PushButton" est cliqué
+        print("Running full turn")
+
+    def shoot(self):
+        # Code à exécuter lorsque le bouton "Shoot" est cliqué
+        print("Shooting")
+
+    def spiral_scan(self):
+        # Code à exécuter lorsque le bouton "SpiralScan" est cliqué
+        print("Initiating spiral scan")
+
+    def classic_scan(self):
+        # Code à exécuter lorsque le bouton "ClassicScan" est cliqué
+        print("Initiating classic scan")
+
+    def reset_position(self):
+        # Code à exécuter lorsque le bouton "Reset Position" est cliqué
+        print("Resetting position")
+
+    def some_new_function(self):
+        # Code à exécuter lorsque le bouton associé est cliqué
+        print("Executing some new function")
+
+    def another_new_function(self):
+        # Code à exécuter lorsque le bouton associé est cliqué
+        print("Executing another new function")
+
+    def yet_another_new_function(self):
+        # Code à exécuter lorsque le bouton associé est cliqué
+        print("Executing yet another new function")
+        
 from UI_robot import RadarWidget
