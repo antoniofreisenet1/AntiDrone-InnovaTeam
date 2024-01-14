@@ -53,13 +53,20 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.commandSocket = None
         self.setupUi(self)
         self.setWindowTitle("Radar Movement Simulation")
-
+        # Order : 4, 5, 7, 6, 8, 3, 2, 1
         # Connection status label
         self.statusBar = self.statusBar()
         self.updateStatusBar("Disconnected")
 
+        self.pushButton.setText("Disconnect")
+        self.pushButton_4.setText("Shoot ball")
+        self.pushButton_5.setText("Start classic scan")
+        self.pushButton_7.setText("Get to neutral position")
+        self.pushButton_6.setText("Reset Motors (be careful)")
+
         self.pushButton_4.clicked.connect(lambda: self.sendCommand("run_full_turn"))
-        self.pushButton_5.clicked.connect(lambda: self.sendCommand("run_full_turn"))
+        self.pushButton_5.clicked.connect(lambda: self.sendCommand("scan"))
+        self.pushButton.clicked.connect(self.on_disconnectButton_clicked)
         # Additional buttons can be added here
 
         self.show()
@@ -77,17 +84,30 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             conn, addr = s.accept()
             with conn:
                 self.updateStatusBar(f"Connected to {addr}")
+                self.name.setText("Mindstorms EV3 Robot")
+                self.IP.setText(str(addr))
                 self.commandSocket = conn
                 while True:
                     data = conn.recv(1024)
+                    print(data)
                     if not data:
                         break
-                    x, y = map(int, data.decode().strip().split(','))
-                    self.radarWidget.setPoint(x, y)
+                    lines = data.decode().strip().split('\n')
+                    for data_packet in lines:
+                        if data_packet:  # Ensure the line is not empty
+                            x, y, D = map(int, data_packet.split(','))
+                            self.radarWidget.setPoint(x, y)
 
     def sendCommand(self, command):
         if self.commandSocket:
             self.commandSocket.sendall(f"{command}\n".encode())
+            if command == "scan":
+                self.updateStatusBar("Scanning/Scanned")
+
+    def on_disconnectButton_clicked(self):
+        self.sendCommand("disconnect")
+        self.commandSocket.close()
+        self.updateStatusBar("Disconnected")
 
 
 if __name__ == '__main__':
