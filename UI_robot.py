@@ -63,9 +63,13 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.pushButton_5.setText("Start classic scan")
         self.pushButton_7.setText("Get to neutral position")
         self.pushButton_6.setText("Reset Motors (be careful)")
+        self.pushButton_8.setText("Detectionless scan")
 
         self.pushButton_4.clicked.connect(lambda: self.sendCommand("run_full_turn"))
         self.pushButton_5.clicked.connect(lambda: self.sendCommand("scan"))
+        self.pushButton_7.clicked.connect(lambda: self.sendCommand("neutral"))
+        self.pushButton_6.clicked.connect(lambda: self.sendCommand("reset"))
+        self.pushButton_8.clicked.connect(lambda: self.sendCommand("no_detection_scan"))
         self.pushButton.clicked.connect(self.on_disconnectButton_clicked)
         # Additional buttons can be added here
 

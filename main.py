@@ -9,7 +9,6 @@ from ev3dev2.motor import *
 from ev3dev2.sound import Sound
 from ev3dev2.sensor import *
 
-
 sound = Sound()
 
 velocidad_base = 30
@@ -19,20 +18,16 @@ factor_correccion = 2
 com_queue = Queue()
 
 # Signatures we'll be accepting (SIGNATURE 2 FOR GREEN)
-sigs = 2
+sigs = 1
 
 # I2C bus and address
 bus = SMBus(3)
 address = 0x54
 # Define motors
-horizontal_motor = MediumMotor(OUTPUT_A)  # Horizontal scan motor
-vertical_motor = LargeMotor(OUTPUT_B)    # Vertical scan motor
-shooter_motor = LargeMotor(OUTPUT_C)
 
 # Define scan range (in degrees)
 horizontal_range = [0, 360]  # Range for horizontal scanning
-vertical_range = [-90, 0]     # Range for vertical scanning
-
+vertical_range = [-90, 0]  # Range for vertical scanning
 
 
 def motor_test():
@@ -64,7 +59,6 @@ def cam_setup():
 
 
 def cam_detect():
-
     data = [174, 193, 32, 2, sigs, 1]
 
     # Request block
@@ -72,13 +66,13 @@ def cam_detect():
 
     # Read block request
     block = bus.read_i2c_block_data(address, 0, 20)
-
+    print(block)
     # Extract positional information
     x = block[9] * 256 + block[8]
     y = block[11] * 256 + block[10]
     w = block[13] * 256 + block[12]
     h = block[15] * 256 + block[14]
-
+    print(x,y,w,h)
     # DOCS: https://docs.pixycam.com/wiki/doku.php?id=wiki:v2:porting_guide#pixy2-serial-protocol-packet-reference
 
     # Formula for measuring the distance to an object (v1):
@@ -91,7 +85,7 @@ def cam_detect():
 
     AVERAGE_GREEN_OBJECT_SIZE = 1000  # size in pixels
     green_object_size = w
-    distance = AVERAGE_GREEN_OBJECT_SIZE / (2*green_object_size * math.tan(math.radians(60/2)))
+    distance = AVERAGE_GREEN_OBJECT_SIZE / (2 * green_object_size * math.tan(math.radians(60 / 2)))
 
     return distance
 
@@ -105,7 +99,7 @@ def scan_and_detect():
             dist = cam_detect()
             if 150 > dist > 1:
                 sound.speak('Destruction')
-                print("Object detected at:", dist, "Horizontal:", h_pos, "Vertical: ",v_pos)
+                print("Object detected at:", dist, "Horizontal:", h_pos, "Vertical: ", v_pos)
                 com_queue.put((h_pos, v_pos, dist))
 
                 # this will make sure that, if there is an object found, the camera will stop the loop
@@ -120,25 +114,30 @@ def scan_and_detect():
 def shooter():
     # When performing a queue.get operation, the thread will be blocked if there are no objects in the queue
 
-    y = 200/2
-    if(150 > com_queue.get()[2] > 50):
-        shooter_motor.run_to_abs_pos(position_sp = y + 22)
-    elif(150 > com_queue.get()[2] > 100):
-        shooter_motor.run_to_abs_pos(position_sp=y + 45)
+    y = 200 / 2
+    if 150 > com_queue.get()[2] > 50:
+        shooter_inclination_motor.run_to_abs_pos(position_sp=y + 22)
+    elif 150 > com_queue.get()[2] > 100:
+        shooter_inclination_motor.run_to_abs_pos(position_sp=y + 45)
 
     # TODO: implement shooter activation function
+    shooter_inclination_motor.on_for_degrees(SpeedPercent(50), 360)
 
+
+def calculate_inclination_angle(distance):
+    initial_velocity = 23  # Constant speed
+    return math.degrees(0.5 * math.asin((distance * 9.81) / (initial_velocity ** 2)))
 
 
 def calibrateAll():
     # Pixy2 has a resolution of 328 * 200
     # make sure that the function will properly move the camera/shooter
-    x = 328/2
-    y = 200/2
+    x = 328 / 2
+    y = 200 / 2
     if x != com_queue.get()[0]:
-        horizontal_motor.run_to_abs_pos(position_sp = x, speed_sp = 200)
+        horizontal_motor.run_to_abs_pos(position_sp=x, speed_sp=200)
     if y != com_queue.get()[1]:
-        vertical_motor.run_to_abs_pos(position_sp = y, speed_sp = 200)
+        vertical_motor.run_to_abs_pos(position_sp=y, speed_sp=200)
 
 
 # Creating threads:
@@ -150,20 +149,17 @@ def start_threads():
     global cam_thread_started
     global shooter_thread_started
     if not cam_thread_started:
-        cam_thread_started= True
+        cam_thread_started = True
         threading.Thread(target=scan_and_detect).start()
         print("The cam detection thread has started")
     if not shooter_thread_started:
         threading.Thread(target=shooter).start()
         print("The shooter thread has started")
 
+
 try:
-
-    motor_test()
-    cam_setup()
     while True:
-        start_threads()
-
+        cam_detect()
 
 except KeyboardInterrupt:
     print("Stop!")

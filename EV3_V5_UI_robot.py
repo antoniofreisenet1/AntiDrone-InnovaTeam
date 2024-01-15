@@ -72,7 +72,8 @@ def listen_for_commands(arguments):
     command_functions = {
         "run_full_turn": shoot_motor.run_full_turn,
         "disconnect": lambda: handle_disconnect(sock),
-        "scan": lambda: scan(h_motor, v_camera_motor, touch_sensor, sound, ultrasonic_sensor, shoot_motor)
+        "scan": lambda: scan(h_motor, v_camera_motor, touch_sensor, sound, ultrasonic_sensor, shoot_motor),
+        "no_detection_scan": lambda: no_detection_scan(h_motor, v_camera_motor, touch_sensor, sound, ultrasonic_sensor, shoot_motor),
         # Map more commands to functions here
     }
 
@@ -143,6 +144,29 @@ def scan(h_motor, v_motor, touch_sensor, sound, ultrasonic_sensor, shoot_motor):
                 return
         v_motor.run_for_degrees(v_motor.motor_range[0] - v_motor.motor.position + 30)  # Reset vertical motor
         h_motor.run_for_degrees(h_deg_increment)  # Increment horizontal motor
+    #h_motor.run_for_degrees(h_motor.motor_range[0] - h_motor.motor.position)
+    h_motor.run_for_degrees(h_motor.motor.position - h_motor.motor_range[0])
+
+
+def no_detection_scan(h_motor, v_motor, touch_sensor, sound, ultrasonic_sensor, shoot_motor):
+    h_deg_increment = 30  # Increment for horizontal motor
+    v_deg_increment = 15  # Increment for vertical motor
+
+    h_motor.run_for_degrees(h_motor.motor_range[0] - h_motor.motor.position)
+    v_motor.run_for_degrees(v_motor.motor_range[0] - v_motor.motor.position)
+
+    while h_motor.motor.position < h_motor.motor_range[1]:
+        h_motor.run_for_degrees(h_deg_increment)
+        while v_motor.motor.position < v_motor.motor_range[1]:
+            v_motor.run_for_degrees(v_deg_increment)
+            distance = ultrasonic_sensor.distance_centimeters
+            print(distance)
+            if touch_sensor.is_pressed:
+                sound.speak('Button pressed')
+                shoot_motor.run_for_degrees(calculate_inclination(distance))
+                return
+        v_motor.run_for_degrees(v_motor.motor_range[0] - v_motor.motor.position + 30)  # Reset vertical motor
+        h_motor.run_for_degrees(h_deg_increment)  # Increment horizontal motor
     h_motor.run_for_degrees(h_motor.motor_range[0] - h_motor.motor.position)
 
 
@@ -163,7 +187,7 @@ def main():
     sound = Sound()
     # Initialization
     h_motor = MotorController(H_MOTOR_PORT, (0, 841), motor_type=LargeMotor, name="h_motor")
-    v_camera_motor = MotorController(V_CAMERA_MOTOR_PORT, (0, 100), name="v_cam_motor")
+    v_camera_motor = MotorController(V_CAMERA_MOTOR_PORT, (-50, 50), name="v_cam_motor")
     v_shooter_motor = MotorController(V_SHOOTER_MOTOR_PORT, (0, 300), name="v_shoot_motor")
     shoot_motor = MotorController(SHOOT_MOTOR_PORT, (0, 360), motor_type=LargeMotor, name="shoot_motor")
     ultrasonic_sensor = UltrasonicSensor(ULTRASONIC_PORT)
@@ -178,7 +202,7 @@ def main():
         s.setblocking(False)  # Make the socket non-blocking
         # Start the listening thread
         arguments = (s, sound, h_motor, v_camera_motor, shoot_motor, ultrasonic_sensor, touch_sensor)
-        threading.Thread(target=listen_for_commands, args=(arguments, ), daemon=True).start()
+        threading.Thread(target=listen_for_commands, args=(arguments,), daemon=True).start()
         # You have to add the objects in args to listen for certain commands
         while not touch_sensor.is_pressed:
             motor1_pos, motor2_pos = h_motor.get_position(), v_camera_motor.get_position()

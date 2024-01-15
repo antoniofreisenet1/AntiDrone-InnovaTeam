@@ -2,14 +2,14 @@ import math
 import threading
 import time
 from ev3dev2.motor import MediumMotor, LargeMotor, OUTPUT_A, OUTPUT_B, OUTPUT_C, OUTPUT_D, SpeedPercent, Motor
-from ev3dev2.sensor import INPUT_1, INPUT_2
+from ev3dev2.sensor import INPUT_1, INPUT_2, INPUT_3
 from ev3dev2.port import LegoPort
 from ev3dev2.sensor.lego import TouchSensor
 from ev3dev2.sound import Sound
 from smbus2 import SMBus
 
 # Constants
-CAMERA_PORT = INPUT_1
+CAMERA_PORT = INPUT_3
 H_MOTOR_PORT = OUTPUT_A  # Horizontal motor for camera movement
 V_CAMERA_MOTOR_PORT = OUTPUT_B  # Vertical motor for camera movement
 V_SHOOTER_MOTOR_PORT = OUTPUT_C  # Vertical motor for shooter mechanism
@@ -290,13 +290,13 @@ if __name__ == "__main__":
 
 
         while True:
-            for move in range(0, 180, 5):
+            #for move in range(0, 180, 5):
                 # h_motor.move_to_position(move, 30)
-                h_motor.motor.run_to_abs_pos(position_sp=move, speed_sp=50)
-                time.sleep(2)
-            exit(0)
+            #    h_motor.motor.run_to_abs_pos(position_sp=move, speed_sp=50)
+            #    time.sleep(2)
+            #exit(0)
             # threading.Thread(target=scan_and_detect(camera,h_motor, v_camera_motor))
-            # scan_result = scan_and_detect(camera, h_motor, v_camera_motor)
+            scan_result = scan_and_detect(camera, h_motor, v_camera_motor)
             # track_object(h_motor, v_camera_motor, camera, pid_horizontal, pid_vertical)
             # aim_and_shoot(v_shooter_motor, shoot_motor, camera, distance, v_camera_motor.motor.position)
             # if scan_result is not None:

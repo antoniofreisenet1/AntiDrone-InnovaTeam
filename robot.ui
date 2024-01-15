@@ -1,0 +1,345 @@
+
+/****************************************************************************
+**
+** Copyright (C) 2022 The Qt Company Ltd.
+** Contact: https://www.qt.io/licensing/
+**
+** This file is part of the examples of the Qt Design Studio.
+**
+** $QT_BEGIN_LICENSE:BSD$
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and The Qt Company. For licensing terms
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
+**
+** BSD License Usage
+** Alternatively, you may use this file under the terms of the BSD license
+** as follows:
+**
+** "Redistribution and use in source and binary forms, with or without
+** modification, are permitted provided that the following conditions are
+** met:
+**   * Redistributions of source code must retain the above copyright
+**     notice, this list of conditions and the following disclaimer.
+**   * Redistributions in binary form must reproduce the above copyright
+**     notice, this list of conditions and the following disclaimer in
+**     the documentation and/or other materials provided with the
+**     distribution.
+**   * Neither the name of The Qt Company Ltd nor the names of its
+**     contributors may be used to endorse or promote products derived
+**     from this software without specific prior written permission.
+**
+**
+** THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+** "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+** LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+** A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+** OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+** SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+** LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+** DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+** THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+** (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+** OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE."
+**
+** $QT_END_LICENSE$
+**
+****************************************************************************/
+
+
+/*
+This is a UI file (.ui.qml) that is intended to be edited in Qt Design Studio only.
+It is supposed to be strictly declarative and only uses a subset of QML. If you edit
+this file manually, you might introduce QML code that is not supported by Qt Design Studio.
+Check out https://doc.qt.io/qtcreator/creator-quick-ui-forms.html for details on .ui.qml files.
+*/
+import QtQuick
+
+
+/****************************************************************************
+**
+** Copyright (C) 2022 The Qt Company Ltd.
+** Contact: https://www.qt.io/licensing/
+**
+** This file is part of the examples of the Qt Design Studio.
+**
+** $QT_BEGIN_LICENSE:BSD$
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and The Qt Company. For licensing terms
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
+**
+** BSD License Usage
+** Alternatively, you may use this file under the terms of the BSD license
+** as follows:
+**
+** "Redistribution and use in source and binary forms, with or without
+** modification, are permitted provided that the following conditions are
+** met:
+**   * Redistributions of source code must retain the above copyright
+**     notice, this list of conditions and the following disclaimer.
+**   * Redistributions in binary form must reproduce the above copyright
+**     notice, this list of conditions and the following disclaimer in
+**     the documentation and/or other materials provided with the
+**     distribution.
+**   * Neither the name of The Qt Company Ltd nor the names of its
+**     contributors may be used to endorse or promote products derived
+**     from this software without specific prior written permission.
+**
+**
+** THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+** "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+** LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+** A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+** OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+** SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+** LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+** DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+** THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+** (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+** OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE."
+**
+** $QT_END_LICENSE$
+**
+****************************************************************************/
+import QtQuick3D
+import QtQuick.Controls.Material
+import QtQuick.Controls
+import QtQuick.Layouts
+import RobotArm
+import Backend
+import QtQml
+
+Pane {
+    id: root
+    Material.theme: darkModeToggle.checked ? Material.Dark : Material.Light
+
+    readonly property bool mobile: Qt.platform.os === "android"
+    readonly property bool horizontal: width > height
+    property real sliderWidth: width * 0.15
+    property real buttonRowWidth: width * 0.12
+    property real buttonMinWidth: 65
+
+    leftPadding: 60
+    rightPadding: 60
+    topPadding: 50
+    bottomPadding: 50
+
+    width: 800
+    height: 600
+    state: "mobileHorizontal"
+
+    Backend {
+        id: backend
+    }
+
+    Column {
+        id: column
+        x: -14
+        y: 147
+        width: 200
+        height: 386
+
+        RowLayout {
+            id: rowLayout1
+            width: 100
+            height: 100
+
+            Text {
+                id: text1
+                text: qsTr("Amos")
+                font.pixelSize: 12
+            }
+            Label {
+                id: amos
+                text: backend.status
+                font.italic: true
+            }
+        }
+
+        RowLayout {
+            id: rowLayout2
+            width: 100
+            height: 100
+
+            Text {
+                id: text2
+                text: qsTr("Distance")
+                font.pixelSize: 12
+            }
+            Label {
+                id: distance
+                text: backend.status
+                font.italic: true
+            }
+        }
+
+        RowLayout {
+            id: rowLayout3
+            width: 100
+            height: 100
+
+            Text {
+                id: text3
+                text: qsTr("Elevation")
+                font.pixelSize: 12
+            }
+            Label {
+                id: elevation
+                text: backend.status
+                font.italic: true
+            }
+        }
+
+        RowLayout {
+            id: rowLayout4
+            width: 100
+            height: 100
+
+            Text {
+                id: text4
+                text: qsTr("Orientation")
+                font.pixelSize: 12
+            }
+            Label {
+                id: orientation
+                text: backend.status
+                font.italic: true
+            }
+        }
+    }
+
+    Toggle {
+        id: darkModeToggle
+        text: backend.status
+        anchors.top: parent.top
+    }
+
+    Label {
+        id: robotStatus
+        text: backend.status
+        anchors.top: parent.top
+        font.italic: true
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.topMargin: 43
+        anchors.horizontalCenterOffset: -286
+    }
+
+    RowLayout {
+        id: rowLayout
+        x: 290
+        y: -33
+        width: 354
+        height: 100
+
+        Text {
+            id: text5
+            text: qsTr("Status")
+            font.pixelSize: 12
+        }
+
+        Text {
+            id: text6
+            text: qsTr("Searching")
+            font.pixelSize: 12
+        }
+
+        Text {
+            id: text7
+            text: qsTr("Target")
+            font.pixelSize: 12
+        }
+
+        Text {
+            id: text8
+            text: qsTr("Shooting")
+            font.pixelSize: 12
+        }
+    }
+
+    Item {
+        id: __materialLibrary__
+    }
+
+    Row {
+        id: row
+        x: 290
+        y: 88
+        width: 207
+        height: 57
+
+        Button {
+            id: button
+            text: qsTr("Search")
+        }
+
+        Button {
+            id: button1
+            text: qsTr("Fire")
+        }
+    }
+
+    AnimatedImage {
+        id: animatedImage
+        x: 360
+        y: 234
+        width: 294
+        height: 265
+        source: "qrc:/qtquickplugin/images/template_image.png"
+    }
+
+    states: [
+        State {
+            name: "mobileHorizontal"
+            when: root.mobile && root.horizontal
+
+            PropertyChanges {
+                target: root
+                leftPadding: 45
+                topPadding: 15
+                bottomPadding: 0
+                sliderWidth: width * 0.4
+                buttonRowWidth: width * 0.2
+                buttonMinWidth: 75
+            }
+        },
+        State {
+            name: "desktopVertical"
+            when: !root.mobile && !root.horizontal
+
+            PropertyChanges {
+                target: root
+                sliderWidth: width * 0.4
+                buttonRowWidth: width * 0.2
+                bottomPadding: 20
+            }
+        },
+        State {
+            name: "mobileVertical"
+            when: root.mobile && !root.horizontal
+
+            PropertyChanges {
+                target: root
+                sliderWidth: width * 0.85
+                topPadding: 15
+                leftPadding: 45
+                bottomPadding: 0
+                buttonRowWidth: width * 0.2
+                buttonMinWidth: 75
+            }
+        }
+    ]
+
+    transitions: Transition {
+        PropertyAnimation {
+            properties: "sliderWidth, scale.x, scale.y, scale.z, y, z"
+        }
+        AnchorAnimation {}
+    }
+}
