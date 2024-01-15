@@ -24,6 +24,9 @@ ULTRASONIC_PORT = INPUT_2
 
 
 class MotorController:
+    """
+    Class designated for all motor related functions. Contains gear ratios and the speed percentage.
+    """
     speed_pct = 15
     GEAR_RATIOS = {
         "h_motor": 4.67,  # Replace with actual gear ratio
@@ -40,50 +43,54 @@ class MotorController:
         self.gear_ratio = self.GEAR_RATIOS.get(name, 1.0)  # Default to 1.0 if name not found
 
     def in_range(self):
+        """Function that tests if the motor position is in a valid range"""
         return self.motor.position > self.motor_range[1] or self.motor.position < self.motor_range[0]
 
     def reset(self):
+        """Returns the motor to its original position"""
         self.motor.reset()
 
     def move_to_degrees(self, degrees):
-        self.motor.run_to_abs_pos(position_sp=degrees*self.gear_ratio, speed_sp=150)
-        self.motor.wait_until_not_moving()
+        """Moves the motor to a specified position using degrees.
+        :param: degrees
+        """
+        self.motor.run_to_abs_pos(position_sp=degrees, speed_sp=SpeedPercent(self.speed_pct))
 
     def run_for_degrees(self, degrees):
+        """Makes a motor run for a certain amount of degrees.
+        :paaram: degrees
+        """
         # Calculate adjusted degrees based on gear ratio
         adjusted_degrees = degrees * self.gear_ratio
         self.motor.on_for_degrees(SpeedPercent(self.speed_pct), adjusted_degrees)
 
     def shoot(self):
+        """Makes the motor shoot."""
         self.motor.on_for_degrees(SpeedPercent(self.speed_pct), 400)
 
     def get_position(self):
+        """Gets the current posiiton of the motor"""
         # Replace this with the actual code to get motor positions from Mindstorms
         return int(self.motor.position / self.gear_ratio)  # Example values
 
     def run_full_turn(self):
+        """Makes a 360º turn"""
         self.motor.on_for_degrees(SpeedPercent(self.speed_pct), 360)
 
 
 def listen_for_commands(arguments):
-    """
+    """Makes the robot listen for commands given by the user through the console.
 
-    :param arguments:
-    :return:
-    """
+    :param: arguments"""
     # add objects as arguments in the parenthesis to call them
-    sock, sound, h_motor, v_camera_motor, v_shooter_motor, shoot_motor, ultrasonic_sensor, touch_sensor = arguments
+    sock, sound, h_motor, v_camera_motor, shoot_motor, ultrasonic_sensor, touch_sensor = arguments
     print(shoot_motor)
 
     command_functions = {
         "run_full_turn": shoot_motor.run_full_turn,
         "disconnect": lambda: handle_disconnect(sock),
-        "scan": lambda: scan(h_motor, v_camera_motor, touch_sensor, sound, ultrasonic_sensor, shoot_motor,
-                             v_shooter_motor),
-        "no_detection_scan": lambda: no_detection_scan(h_motor, v_camera_motor, touch_sensor, sound, ultrasonic_sensor,
-                                                       shoot_motor),
-        "shoot_motor_correction": lambda: shoot_detection(v_shooter_motor, ultrasonic_sensor, shoot_motor),
-        "neutral": lambda: get_to_neutral(h_motor, v_camera_motor, v_shooter_motor)
+        "scan": lambda: scan(h_motor, v_camera_motor, touch_sensor, sound, ultrasonic_sensor, shoot_motor),
+        "no_detection_scan": lambda: no_detection_scan(h_motor, v_camera_motor, touch_sensor, sound, ultrasonic_sensor, shoot_motor),
         # Map more commands to functions here
     }
 
@@ -103,10 +110,13 @@ def listen_for_commands(arguments):
 
 
 def calculate_inclination(dist):
+    """Performs the necessary calculations to determine the inclination required to shoot at the target.
+
+    :param: dist"""
     BALL_VELOCITY = 23  # Constant speed in m/s
     GRAVITY = 9.81  # Acceleration due to gravity in m/s^2
     HORIZONTAL_OFFSET = 5  # Horizontal offset in cm
-    VERTICAL_OFFSET = 7  # Vertical offset in cm
+    VERTICAL_OFFSET = 6  # Vertical offset in cm
 
     # Convert cm to m for calculation
     dist_m = dist / 100  # Convert distance from cm to m
@@ -134,10 +144,11 @@ def calculate_inclination(dist):
     except ValueError:
         return None
 
-def calculate_inclination(dist, angle):
 
+def scan(h_motor, v_motor, touch_sensor, sound, ultrasonic_sensor, shoot_motor):
+    """Object detection scan loop
 
-def scan(h_motor, v_motor, touch_sensor, sound, ultrasonic_sensor, shoot_motor, v_shoot_motor):
+    :param: h_motor, v_motor, touch_sensor, sound, ultrasonic_sensor, shoot_motor"""
     h_deg_increment = 30  # Increment for horizontal motor
     v_deg_increment = 15  # Increment for vertical motor
 
@@ -150,18 +161,21 @@ def scan(h_motor, v_motor, touch_sensor, sound, ultrasonic_sensor, shoot_motor, 
             v_motor.run_for_degrees(v_deg_increment)
             distance = ultrasonic_sensor.distance_centimeters
             print(distance)
-            v_shoot_motor.run_for_degrees(int(calculate_inclination(distance)))
             if is_valid_distance(distance) or touch_sensor.is_pressed:
                 sound.speak('Target detected')
-
+                shoot_motor.run_for_degrees(calculate_inclination(distance))
                 return
         v_motor.run_for_degrees(v_motor.motor_range[0] - v_motor.motor.position + 30)  # Reset vertical motor
         h_motor.run_for_degrees(h_deg_increment)  # Increment horizontal motor
-    # h_motor.run_for_degrees(h_motor.motor_range[0] - h_motor.motor.position)
+    #h_motor.run_for_degrees(h_motor.motor_range[0] - h_motor.motor.position)
     h_motor.run_for_degrees(h_motor.motor.position - h_motor.motor_range[0])
 
 
-def no_detection_scan(h_motor, v_motor, touch_sensor, sound, ultrasonic_sensor, v_shoot_motor):
+def no_detection_scan(h_motor, v_motor, touch_sensor, sound, ultrasonic_sensor, shoot_motor):
+    """Scan function to execute in case no objects are found.
+
+    :param: h_motor, v_motor, touch_sensor, sound, ultrasonic_sensor, shoot_motor
+    """
     h_deg_increment = 30  # Increment for horizontal motor
     v_deg_increment = 15  # Increment for vertical motor
 
@@ -173,32 +187,20 @@ def no_detection_scan(h_motor, v_motor, touch_sensor, sound, ultrasonic_sensor, 
         while v_motor.motor.position < v_motor.motor_range[1]:
             v_motor.run_for_degrees(v_deg_increment)
             distance = ultrasonic_sensor.distance_centimeters
-            v_shoot_motor.run_for_degrees(v_motor.motor_range[0] - int(calculate_inclination(distance)))
             print(distance)
             if touch_sensor.is_pressed:
                 sound.speak('Button pressed')
-                # v_shoot_motor.run_for_degrees(calculate_inclination(distance))
+                shoot_motor.run_for_degrees(calculate_inclination(distance))
                 return
         v_motor.run_for_degrees(v_motor.motor_range[0] - v_motor.motor.position + 30)  # Reset vertical motor
         h_motor.run_for_degrees(h_deg_increment)  # Increment horizontal motor
     h_motor.run_for_degrees(h_motor.motor_range[0] - h_motor.motor.position)
 
 
-def get_to_neutral(h_motor, v_motor, v_shooter_motor):
-    h_motor.move_to_degrees(0)
-    v_motor.move_to_degrees(0)
-    v_shooter_motor.move_to_degrees(0)
-
-
-def shoot_detection(v_shooter_motor, ultrasonic_sensor, shoot_motor):
-    while True:
-        distance = ultrasonic_sensor.distance_centimeters
-        v_shooter_motor.move_to_degrees(int(calculate_inclination(distance)))
-        shoot_motor.run_full_turn()
-        time.sleep(1)
-
-
 def is_valid_distance(distance):
+    """Determine if the distance to the object is between 1 and 150cm
+
+    :param: distance"""
     if distance is None:
         return False
     else:
@@ -206,6 +208,7 @@ def is_valid_distance(distance):
 
 
 def handle_disconnect(s):
+    """Robot disconnect handler"""
     s.close()
     print("Disconnected")
     sys.exit(0)
@@ -216,7 +219,7 @@ def main():
     # Initialization
     h_motor = MotorController(H_MOTOR_PORT, (0, 841), motor_type=LargeMotor, name="h_motor")
     v_camera_motor = MotorController(V_CAMERA_MOTOR_PORT, (-50, 50), name="v_cam_motor")
-    v_shooter_motor = MotorController(V_SHOOTER_MOTOR_PORT, (-50, 150), name="v_shoot_motor")
+    v_shooter_motor = MotorController(V_SHOOTER_MOTOR_PORT, (0, 300), name="v_shoot_motor")
     shoot_motor = MotorController(SHOOT_MOTOR_PORT, (0, 360), motor_type=LargeMotor, name="shoot_motor")
     ultrasonic_sensor = UltrasonicSensor(ULTRASONIC_PORT)
 
@@ -229,7 +232,7 @@ def main():
         s.connect((HOST, PORT))
         s.setblocking(False)  # Make the socket non-blocking
         # Start the listening thread
-        arguments = (s, sound, h_motor, v_camera_motor, v_shooter_motor, shoot_motor, ultrasonic_sensor, touch_sensor)
+        arguments = (s, sound, h_motor, v_camera_motor, shoot_motor, ultrasonic_sensor, touch_sensor)
         threading.Thread(target=listen_for_commands, args=(arguments,), daemon=True).start()
         # You have to add the objects in args to listen for certain commands
         while not touch_sensor.is_pressed:
