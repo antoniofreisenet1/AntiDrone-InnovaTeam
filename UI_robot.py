@@ -10,7 +10,15 @@ from ui_main_window import Ui_MainWindow
 
 
 class RadarWidget(QWidget):
+    """
+    Custom widget for displaying radar-like graphics.
+    """
     def __init__(self, parent=None):
+        """
+        Initialize the RadarWidget.
+
+        :param parent: Parent widget.
+        """
         super().__init__(parent)
         self.x = 0
         self.y = 0
@@ -64,12 +72,15 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.pushButton_7.setText("Get to neutral position")
         self.pushButton_6.setText("Reset Motors (be careful)")
         self.pushButton_8.setText("Detectionless scan")
+        self.pushButton_3.setText("Shooting motor correction")
+
 
         self.pushButton_4.clicked.connect(lambda: self.sendCommand("run_full_turn"))
         self.pushButton_5.clicked.connect(lambda: self.sendCommand("scan"))
         self.pushButton_7.clicked.connect(lambda: self.sendCommand("neutral"))
         self.pushButton_6.clicked.connect(lambda: self.sendCommand("reset"))
         self.pushButton_8.clicked.connect(lambda: self.sendCommand("no_detection_scan"))
+        self.pushButton_3.clicked.connect(lambda: self.sendCommand("shoot_motor_correction"))
         self.pushButton.clicked.connect(self.on_disconnectButton_clicked)
         # Additional buttons can be added here
 
