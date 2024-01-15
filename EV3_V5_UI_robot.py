@@ -24,6 +24,9 @@ ULTRASONIC_PORT = INPUT_2
 
 
 class MotorController:
+    """
+    Class designated for all motor related functions. Contains gear ratios and the speed percentage.
+    """
     speed_pct = 15
     GEAR_RATIOS = {
         "h_motor": 4.67,  # Replace with actual gear ratio
@@ -40,31 +43,45 @@ class MotorController:
         self.gear_ratio = self.GEAR_RATIOS.get(name, 1.0)  # Default to 1.0 if name not found
 
     def in_range(self):
+        """Function that tests if the motor position is in a valid range"""
         return self.motor.position > self.motor_range[1] or self.motor.position < self.motor_range[0]
 
     def reset(self):
+        """Returns the motor to its original position"""
         self.motor.reset()
 
     def move_to_degrees(self, degrees):
+        """Moves the motor to a specified position using degrees.
+        :param: degrees
+        """
         self.motor.run_to_abs_pos(position_sp=degrees, speed_sp=SpeedPercent(self.speed_pct))
 
     def run_for_degrees(self, degrees):
+        """Makes a motor run for a certain amount of degrees.
+        :paaram: degrees
+        """
         # Calculate adjusted degrees based on gear ratio
         adjusted_degrees = degrees * self.gear_ratio
         self.motor.on_for_degrees(SpeedPercent(self.speed_pct), adjusted_degrees)
 
     def shoot(self):
+        """Makes the motor shoot."""
         self.motor.on_for_degrees(SpeedPercent(self.speed_pct), 400)
 
     def get_position(self):
+        """Gets the current posiiton of the motor"""
         # Replace this with the actual code to get motor positions from Mindstorms
         return int(self.motor.position / self.gear_ratio)  # Example values
 
     def run_full_turn(self):
+        """Makes a 360º turn"""
         self.motor.on_for_degrees(SpeedPercent(self.speed_pct), 360)
 
 
 def listen_for_commands(arguments):
+    """Makes the robot listen for commands given by the user through the console.
+
+    :param: arguments"""
     # add objects as arguments in the parenthesis to call them
     sock, sound, h_motor, v_camera_motor, shoot_motor, ultrasonic_sensor, touch_sensor = arguments
     print(shoot_motor)
@@ -93,6 +110,9 @@ def listen_for_commands(arguments):
 
 
 def calculate_inclination(dist):
+    """Performs the necessary calculations to determine the inclination required to shoot at the target.
+
+    :param: dist"""
     BALL_VELOCITY = 23  # Constant speed in m/s
     GRAVITY = 9.81  # Acceleration due to gravity in m/s^2
     HORIZONTAL_OFFSET = 5  # Horizontal offset in cm
@@ -126,6 +146,9 @@ def calculate_inclination(dist):
 
 
 def scan(h_motor, v_motor, touch_sensor, sound, ultrasonic_sensor, shoot_motor):
+    """Object detection scan loop
+
+    :param: h_motor, v_motor, touch_sensor, sound, ultrasonic_sensor, shoot_motor"""
     h_deg_increment = 30  # Increment for horizontal motor
     v_deg_increment = 15  # Increment for vertical motor
 
@@ -149,6 +172,10 @@ def scan(h_motor, v_motor, touch_sensor, sound, ultrasonic_sensor, shoot_motor):
 
 
 def no_detection_scan(h_motor, v_motor, touch_sensor, sound, ultrasonic_sensor, shoot_motor):
+    """Scan function to execute in case no objects are found.
+
+    :param: h_motor, v_motor, touch_sensor, sound, ultrasonic_sensor, shoot_motor
+    """
     h_deg_increment = 30  # Increment for horizontal motor
     v_deg_increment = 15  # Increment for vertical motor
 
@@ -171,6 +198,9 @@ def no_detection_scan(h_motor, v_motor, touch_sensor, sound, ultrasonic_sensor, 
 
 
 def is_valid_distance(distance):
+    """Determine if the distance to the object is between 1 and 150cm
+
+    :param: distance"""
     if distance is None:
         return False
     else:
@@ -178,6 +208,7 @@ def is_valid_distance(distance):
 
 
 def handle_disconnect(s):
+    """Robot disconnect handler"""
     s.close()
     print("Disconnected")
     sys.exit(0)
